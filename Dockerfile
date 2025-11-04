@@ -1,34 +1,25 @@
-# ==========================
-#   BUILD AŞAMASI
-# ==========================
+
+# 1. Build aşaması
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-WORKDIR /src
-
-# Proje dosyasını kopyala ve bağımlılıkları indir
-COPY ["Solida_Web.csproj", "./"]
-RUN dotnet restore "Solida_Web.csproj"
-
-# Tüm dosyaları kopyala ve yayınla (publish)
-COPY . .
-RUN dotnet publish "Solida_Web.csproj" -c Release -o /app/publish --no-restore
-
-
-# ==========================
-#   RUNTIME AŞAMASI
-# ==========================
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Render veya Docker ortamında çalışması için gerekli değişkenler
-ENV ASPNETCORE_URLS=http://+:80
-ENV DOTNET_RUNNING_IN_CONTAINER=true
-ENV DOTNET_USE_POLLING_FILE_WATCHER=true
+# Proje dosyalarını kopyala
+COPY *.sln .
+COPY Solida_Web/*.csproj ./Solida_Web/
+RUN dotnet restore
 
-# Yayınlanan dosyaları kopyala
+# Tüm kaynak kodu kopyala ve publish et
+COPY Solida_Web/. ./Solida_Web/
+WORKDIR /app/Solida_Web
+RUN dotnet publish -c Release -o /app/publish
+
+# 2. Runtime aşaması
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
 COPY --from=build /app/publish .
 
-# Port ayarı
-EXPOSE 80
+# Uygulamayı 0.0.0.0 üzerinde başlat (Render için gerekli)
+ENV ASPNETCORE_URLS=http://+:5000
+EXPOSE 5000
 
-# Uygulama giriş noktası
 ENTRYPOINT ["dotnet", "Solida_Web.dll"]
